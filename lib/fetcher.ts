@@ -1,9 +1,10 @@
-// fetcher.ts — Content fetching from RSS, News API, and direct URLs
+// fetcher.ts — Content fetching from RSS, Anthropic web search, and direct URLs
 // Deduplicates via MD5 hash of URLs, returns RawArticle[] for summarization.
 
 import { createHash } from "crypto";
 import Parser from "rss-parser";
-import type { Source, Section } from "./sources";
+import Anthropic from "@anthropic-ai/sdk";
+import type { Source, Section, SectionConfig } from "./sources";
 import type { RawArticle } from "./summarizer";
 import { isUrlSeen } from "./store";
 
@@ -14,10 +15,7 @@ const rssParser = new Parser({
   },
 });
 
-// Track News API usage across the refresh cycle.
-// Free tier: 100 requests/day. Counter persists within a single serverless invocation.
-let newsApiCallCount = 0;
-const NEWS_API_MAX_CALLS = 80; // leave headroom
+const anthropic = new Anthropic();
 
 function hashUrl(url: string): string {
   return createHash("md5").update(url).digest("hex");
@@ -124,68 +122,202 @@ async function fetchRSS(
   }
 }
 
-// ─── News API Fetching ───────────────────────────────────────
+// ─── Anthropic Web Search ────────────────────────────────────
 
-async function fetchNewsAPI(
+interface WebSearchResult {
+  url: string;
+  title: string;
+  snippet: string;
+}
+
+/**
+ * Use Anthropic's server-side web_search tool to find recent articles.
+ * Replaces the old News API integration.
+ */
+async function fetchWebSearch(
   source: Source,
-  section: Section
+  section: Section,
+  maxResults: number
 ): Promise<RawArticle[]> {
-  const apiKey = process.env.NEWS_API_KEY;
-  if (!apiKey || !source.query) return [];
-
-  // Respect News API free tier limit
-  if (newsApiCallCount >= NEWS_API_MAX_CALLS) {
-    console.log(
-      `[fetcher] News API budget exhausted (${newsApiCallCount}/${NEWS_API_MAX_CALLS}), skipping "${source.query}"`
-    );
-    return [];
-  }
-  newsApiCallCount++;
+  if (!source.query) return [];
 
   try {
-    const params = new URLSearchParams({
-      q: source.query,
-      apiKey,
-      language: "en",
-      sortBy: "publishedAt",
-      pageSize: "10",
+    const messages: Anthropic.MessageParam[] = [
+      {
+        role: "user",
+        content: `Find up to ${maxResults} recent news articles about: ${source.query}
+
+Return ONLY a JSON array of objects with these fields:
+- "url": the article URL
+- "title": the article title
+- "snippet": a 1-2 sentence description of the article
+
+Respond with ONLY the JSON array, no markdown fences or other text.`,
+      },
+    ];
+
+    let response = await anthropic.messages.create({
+      model: "claude-sonnet-4-6",
+      max_tokens: 4096,
+      tools: [{ type: "web_search_20250305" as const, name: "web_search" }],
+      messages,
     });
 
-    const res = await fetch(
-      `https://newsapi.org/v2/everything?${params.toString()}`,
-      { next: { revalidate: 3600 } }
-    );
+    // Handle server-side tool loop — continue until Claude finishes
+    while (response.stop_reason === "pause_turn") {
+      messages.push({ role: "assistant", content: response.content });
+      messages.push({ role: "user", content: "Continue searching and provide the results." });
 
-    if (!res.ok) {
-      console.error(`[fetcher] News API ${res.status} for "${source.query}"`);
+      response = await anthropic.messages.create({
+        model: "claude-sonnet-4-6",
+        max_tokens: 4096,
+        tools: [{ type: "web_search_20250305" as const, name: "web_search" }],
+        messages,
+      });
+    }
+
+    // Extract text content from final response
+    const textBlock = response.content.find((b) => b.type === "text");
+    if (!textBlock || textBlock.type !== "text") {
+      console.log(`[fetcher] No text response for web search "${source.query}"`);
       return [];
     }
 
-    const data = await res.json();
+    const results = parseSearchResults(textBlock.text);
     const articles: RawArticle[] = [];
 
-    for (const item of data.articles || []) {
-      if (!item.url) continue;
+    for (const result of results) {
+      if (!result.url) continue;
 
-      const urlHash = hashUrl(item.url);
+      const urlHash = hashUrl(result.url);
       if (await isUrlSeen(urlHash)) continue;
 
       articles.push({
-        url: item.url,
-        title: item.title || "Untitled",
-        rawContent: [item.description, item.content]
-          .filter(Boolean)
-          .join("\n\n")
-          .slice(0, 3000),
+        url: result.url,
+        title: result.title || "Untitled",
+        rawContent: result.snippet || "",
         source: source.label,
         section,
         fetchedAt: new Date().toISOString(),
       });
     }
 
+    console.log(
+      `[fetcher] Web search "${source.query}": ${results.length} results, ${articles.length} new`
+    );
+
     return articles;
   } catch (err) {
-    console.error(`[fetcher] News API error for "${source.query}":`, err);
+    console.error(`[fetcher] Web search error for "${source.query}":`, err);
+    return [];
+  }
+}
+
+/**
+ * Parse Claude's JSON response containing search results.
+ * Handles markdown fences and malformed JSON gracefully.
+ */
+function parseSearchResults(raw: string): WebSearchResult[] {
+  try {
+    let cleaned = raw.trim();
+    if (cleaned.startsWith("```")) {
+      cleaned = cleaned.replace(/^```(?:json)?\s*/, "").replace(/\s*```$/, "");
+    }
+
+    const parsed = JSON.parse(cleaned);
+    if (!Array.isArray(parsed)) return [];
+
+    return parsed.filter(
+      (item: unknown) =>
+        typeof item === "object" &&
+        item !== null &&
+        typeof (item as WebSearchResult).url === "string"
+    );
+  } catch {
+    console.error("[fetcher] Failed to parse web search results:", raw.slice(0, 200));
+    return [];
+  }
+}
+
+// ─── Sweep Search ────────────────────────────────────────────
+
+/**
+ * Broad sweep search for a section using a general query.
+ * Used to backfill thin sections that didn't get enough high-quality content.
+ */
+export async function fetchSweep(
+  query: string,
+  section: Section,
+  maxResults: number = 10
+): Promise<RawArticle[]> {
+  try {
+    const messages: Anthropic.MessageParam[] = [
+      {
+        role: "user",
+        content: `Find up to ${maxResults} of the most important and recent news articles about: ${query}
+
+Focus on high-quality sources and substantive articles from the past week.
+
+Return ONLY a JSON array of objects with these fields:
+- "url": the article URL
+- "title": the article title
+- "snippet": a 1-2 sentence description of the article
+
+Respond with ONLY the JSON array, no markdown fences or other text.`,
+      },
+    ];
+
+    let response = await anthropic.messages.create({
+      model: "claude-sonnet-4-6",
+      max_tokens: 4096,
+      tools: [{ type: "web_search_20250305" as const, name: "web_search" }],
+      messages,
+    });
+
+    while (response.stop_reason === "pause_turn") {
+      messages.push({ role: "assistant", content: response.content });
+      messages.push({ role: "user", content: "Continue searching and provide the results." });
+
+      response = await anthropic.messages.create({
+        model: "claude-sonnet-4-6",
+        max_tokens: 4096,
+        tools: [{ type: "web_search_20250305" as const, name: "web_search" }],
+        messages,
+      });
+    }
+
+    const textBlock = response.content.find((b) => b.type === "text");
+    if (!textBlock || textBlock.type !== "text") {
+      console.log(`[fetcher] No text response for sweep "${query}"`);
+      return [];
+    }
+
+    const results = parseSearchResults(textBlock.text);
+    const articles: RawArticle[] = [];
+
+    for (const result of results) {
+      if (!result.url) continue;
+
+      const urlHash = hashUrl(result.url);
+      if (await isUrlSeen(urlHash)) continue;
+
+      articles.push({
+        url: result.url,
+        title: result.title || "Untitled",
+        rawContent: result.snippet || "",
+        source: "sweep",
+        section,
+        fetchedAt: new Date().toISOString(),
+      });
+    }
+
+    console.log(
+      `[fetcher] Sweep "${query}": ${results.length} results, ${articles.length} new`
+    );
+
+    return articles;
+  } catch (err) {
+    console.error(`[fetcher] Sweep error for "${query}":`, err);
     return [];
   }
 }
@@ -242,7 +374,8 @@ async function fetchDirectURL(
  */
 export async function fetchSection(
   sources: Source[],
-  section: Section
+  section: Section,
+  searchDepth: number = 5
 ): Promise<RawArticle[]> {
   const allArticles: RawArticle[] = [];
   const seenUrls = new Set<string>();
@@ -255,7 +388,7 @@ export async function fetchSection(
         articles = await fetchRSS(source, section);
         break;
       case "search_query":
-        articles = await fetchNewsAPI(source, section);
+        articles = await fetchWebSearch(source, section, searchDepth);
         break;
       case "direct_url":
         articles = await fetchDirectURL(source, section);

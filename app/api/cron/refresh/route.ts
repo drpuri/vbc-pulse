@@ -1,12 +1,12 @@
 // Cron endpoint — regenerates addenda from latest ratings, then fetches,
-// summarizes, and stores articles for all sections.
+// summarizes, and stores articles for all sections. Phase 3 sweeps thin sections.
 // Triggered by Vercel Cron weekly (see vercel.json).
 // Saves progress to KV incrementally so partial results survive timeouts.
 
 import { NextResponse } from "next/server";
 import { SECTIONS } from "@/lib/sources";
 import type { Section } from "@/lib/sources";
-import { fetchSection } from "@/lib/fetcher";
+import { fetchSection, fetchSweep } from "@/lib/fetcher";
 import { summarizeBatch } from "@/lib/summarizer";
 import { generateFeedbackAddendum } from "@/lib/feedback";
 import { kv } from "@vercel/kv";
@@ -23,13 +23,14 @@ export const dynamic = "force-dynamic";
 /** Save current progress to KV so the admin page can always show latest state. */
 async function saveProgress(
   tuneResults: Record<string, { ratingsUsed: number; tuned: boolean }>,
-  fetchResults: Record<string, { fetched: number; stored: number }>,
+  fetchResults: Record<string, { fetched: number; stored: number; highScoring: number }>,
+  sweepResults: Record<string, { triggered: boolean; fetched: number; stored: number }>,
   status: "in_progress" | "complete"
 ) {
   const timestamp = new Date().toISOString();
   await kv.set(
     "last_refresh",
-    JSON.stringify({ timestamp, status, tuning: tuneResults, articles: fetchResults })
+    JSON.stringify({ timestamp, status, tuning: tuneResults, articles: fetchResults, sweep: sweepResults })
   );
 }
 
@@ -43,10 +44,11 @@ export async function GET(request: Request) {
 
   const tuneResults: Record<string, { ratingsUsed: number; tuned: boolean }> =
     {};
-  const fetchResults: Record<string, { fetched: number; stored: number }> = {};
+  const fetchResults: Record<string, { fetched: number; stored: number; highScoring: number }> = {};
+  const sweepResults: Record<string, { triggered: boolean; fetched: number; stored: number }> = {};
 
   // Save initial progress marker
-  await saveProgress(tuneResults, fetchResults, "in_progress");
+  await saveProgress(tuneResults, fetchResults, sweepResults, "in_progress");
 
   // ── Phase 1: Auto-tune addenda from latest ratings ──────────
   for (const section of SECTIONS) {
@@ -77,19 +79,22 @@ export async function GET(request: Request) {
   }
 
   // Save after tuning completes
-  await saveProgress(tuneResults, fetchResults, "in_progress");
+  await saveProgress(tuneResults, fetchResults, sweepResults, "in_progress");
 
   // ── Phase 2: Fetch, summarize, store ────────────────────────
   for (const section of SECTIONS) {
     const sectionId = section.id as Section;
     try {
-      // 1. Fetch raw articles
-      const rawArticles = await fetchSection(section.sources, sectionId);
+      // 1. Fetch raw articles (pass searchDepth)
+      const rawArticles = await fetchSection(
+        section.sources,
+        sectionId,
+        section.searchDepth ?? 5
+      );
 
       if (rawArticles.length === 0) {
-        fetchResults[section.id] = { fetched: 0, stored: 0 };
-        // Save progress after each section
-        await saveProgress(tuneResults, fetchResults, "in_progress");
+        fetchResults[section.id] = { fetched: 0, stored: 0, highScoring: 0 };
+        await saveProgress(tuneResults, fetchResults, sweepResults, "in_progress");
         continue;
       }
 
@@ -106,30 +111,85 @@ export async function GET(request: Request) {
       // 4. Store in KV
       const storedCount = await storeArticleBatch(summarized);
 
+      // 5. Count high-scoring articles (relevance >= 4)
+      const highScoring = summarized.filter((a) => a.relevance >= 4).length;
+
       fetchResults[section.id] = {
+        fetched: rawArticles.length,
+        stored: storedCount,
+        highScoring,
+      };
+
+      console.log(
+        `[cron] ${section.id}: ${rawArticles.length} fetched → ${summarized.length} summarized → ${storedCount} stored (${highScoring} high-scoring)`
+      );
+    } catch (err) {
+      console.error(`[cron] Fetch error for ${section.id}:`, err);
+      fetchResults[section.id] = { fetched: 0, stored: 0, highScoring: 0 };
+    }
+
+    // Save progress after each section completes
+    await saveProgress(tuneResults, fetchResults, sweepResults, "in_progress");
+  }
+
+  // ── Phase 3: Sweep thin sections ────────────────────────────
+  for (const section of SECTIONS) {
+    const sectionId = section.id as Section;
+    const sectionFetch = fetchResults[section.id];
+    const highScoring = sectionFetch?.highScoring ?? 0;
+
+    // Only sweep if section has a sweepQuery and fewer than 3 high-scoring articles
+    if (!section.sweepQuery || highScoring >= 3) {
+      sweepResults[section.id] = { triggered: false, fetched: 0, stored: 0 };
+      continue;
+    }
+
+    console.log(
+      `[cron] ${section.id}: only ${highScoring} high-scoring articles, triggering sweep`
+    );
+
+    try {
+      const rawArticles = await fetchSweep(section.sweepQuery, sectionId, 10);
+
+      if (rawArticles.length === 0) {
+        sweepResults[section.id] = { triggered: true, fetched: 0, stored: 0 };
+        await saveProgress(tuneResults, fetchResults, sweepResults, "in_progress");
+        continue;
+      }
+
+      const addendum = await getAddendum(sectionId);
+      const summarized = await summarizeBatch(
+        rawArticles,
+        section,
+        addendum ?? undefined
+      );
+      const storedCount = await storeArticleBatch(summarized);
+
+      sweepResults[section.id] = {
+        triggered: true,
         fetched: rawArticles.length,
         stored: storedCount,
       };
 
       console.log(
-        `[cron] ${section.id}: ${rawArticles.length} fetched → ${summarized.length} summarized → ${storedCount} stored`
+        `[cron] ${section.id} sweep: ${rawArticles.length} fetched → ${summarized.length} summarized → ${storedCount} stored`
       );
     } catch (err) {
-      console.error(`[cron] Fetch error for ${section.id}:`, err);
-      fetchResults[section.id] = { fetched: 0, stored: 0 };
+      console.error(`[cron] Sweep error for ${section.id}:`, err);
+      sweepResults[section.id] = { triggered: true, fetched: 0, stored: 0 };
     }
 
-    // Save progress after each section completes
-    await saveProgress(tuneResults, fetchResults, "in_progress");
+    await saveProgress(tuneResults, fetchResults, sweepResults, "in_progress");
   }
 
   // Final save as complete
-  await saveProgress(tuneResults, fetchResults, "complete");
+  await saveProgress(tuneResults, fetchResults, sweepResults, "complete");
 
   return NextResponse.json({
     ok: true,
     timestamp: new Date().toISOString(),
     tuning: tuneResults,
     articles: fetchResults,
+    sweep: sweepResults,
   });
 }

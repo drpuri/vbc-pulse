@@ -24,6 +24,8 @@ export interface SectionConfig {
   sources: Source[];
   summarizerPrompt: string;
   feedbackAddendum?: string;
+  searchDepth?: number;
+  sweepQuery?: string;
 }
 
 // ─── Section 1: ACO Programs ────────────────────────────────
@@ -33,6 +35,8 @@ const acoSection: SectionConfig = {
   name: "ACO Programs",
   description:
     "CMS rulemaking, benchmark methodology, shared savings performance, M&A/valuations, operational strategies",
+  searchDepth: 8,
+  sweepQuery: "most important Medicare ACO value-based care news this week",
   sources: [
     // RSS — high signal
     { type: "rss", url: "https://www.cms.gov/newsroom/rss-feeds", label: "CMS Newsroom" },
@@ -110,6 +114,8 @@ const riskAdjustmentSection: SectionConfig = {
   name: "Risk Adjustment",
   description:
     "V28 transition, HCC coding, OIG enforcement, AI-assisted coding technology, RADV",
+  searchDepth: 10,
+  sweepQuery: "Medicare risk adjustment HCC coding news this week",
   sources: [
     // RSS feeds
     { type: "rss", url: "https://www.cms.gov/newsroom/rss-feeds", label: "CMS Newsroom" },
@@ -182,6 +188,8 @@ const qualityCostSection: SectionConfig = {
   name: "Quality & Medical Cost",
   description:
     "MSSP quality measures, MA Stars, SNF quality, TCOC benchmarking, medical expense trends",
+  searchDepth: 5,
+  sweepQuery: "Medicare quality measures cost benchmarking news this week",
   sources: [
     { type: "rss", url: "https://www.cms.gov/newsroom/rss-feeds", label: "CMS Newsroom" },
     { type: "rss", url: "https://www.ncqa.org/blog/feed/", label: "NCQA Blog" },
@@ -249,6 +257,8 @@ const aiVbcSection: SectionConfig = {
   name: "AI in Value-Based Care",
   description:
     "Clinical AI tools, regulation, predictive analytics, health AI startups, industry conversation drivers",
+  searchDepth: 3,
+  sweepQuery: "most significant AI healthcare value-based care news this week",
   sources: [
     { type: "rss", url: "https://www.healthit.gov/buzz-blog/feed", label: "ONC Health IT Buzz" },
     { type: "rss", url: "https://www.statnews.com/feed/", label: "STAT News" },
@@ -441,6 +451,8 @@ const earningsSection: SectionConfig = {
   name: "Earnings & Competitive Intel",
   description:
     "MA plan earnings calls, PALTC competitor financials, VBC company performance, industry valuations",
+  searchDepth: 5,
+  sweepQuery: "healthcare company earnings results this week",
   sources: [
     // Recent earnings — Q4 2025 / FY2025 results (available now)
     { type: "search_query", query: "UnitedHealth Group Q4 2025 earnings results", label: "UNH Q4 2025" },
@@ -512,6 +524,7 @@ const industrySection: SectionConfig = {
   name: "Industry Buzz",
   description:
     "Conferences, product launches, trending takes, wild cards — interesting stuff that doesn't fit neatly elsewhere",
+  searchDepth: 5,
   sources: [
     // RSS — broad healthcare + health policy (primary content source)
     { type: "rss", url: "https://www.fiercehealthcare.com/rss/xml", label: "Fierce Healthcare" },
@@ -528,7 +541,6 @@ const industrySection: SectionConfig = {
     { type: "rss", url: "https://kffhealthnews.org/feed/", label: "KFF Health News" },
     { type: "rss", url: "https://www.healthleadersmedia.com/rss", label: "HealthLeaders" },
 
-    // Limit search queries to conserve News API budget (100 requests/day free tier)
     { type: "search_query", query: "healthcare conference HIMSS HLTH JPM 2026 announcements", label: "Conference news" },
     { type: "search_query", query: "healthcare CEO appointment leadership change 2026", label: "C-suite moves" },
     { type: "search_query", query: "healthcare private equity consolidation PBM reform", label: "PE & PBM" },

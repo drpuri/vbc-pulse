@@ -18,10 +18,11 @@ Build out these remaining files:
 
 ### lib/fetcher.ts
 - For RSS sources: use a lightweight RSS parser (rss-parser npm package)
-- For search_query sources: use News API (newsapi.org) — free tier is fine for now
+- For search_query sources: use Anthropic server-side web_search tool
 - For direct_url sources: fetch the page, extract article links / last-modified dates
 - Deduplicate by hashing the article URL (use crypto.createHash('md5'))
 - Return an array of { url, title, rawContent, source, section, fetchedAt }
+- fetchSweep(): broad sweep search for thin sections using sweepQuery from SectionConfig
 
 ### lib/summarizer.ts  
 - Takes raw article content + section config
@@ -93,7 +94,6 @@ Build out these remaining files:
 
 ## Environment variables needed
 - ANTHROPIC_API_KEY
-- NEWS_API_KEY (from newsapi.org)
 - KV_REST_API_URL (Vercel KV)
 - KV_REST_API_TOKEN (Vercel KV)
 - AUTH_SECRET (simple password for rating/admin access)

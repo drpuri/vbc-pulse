@@ -31,7 +31,8 @@ export default function AdminPage() {
   const [lastRefresh, setLastRefresh] = useState<{
     timestamp: string;
     status?: string;
-    articles?: Record<string, { fetched: number; stored: number }>;
+    articles?: Record<string, { fetched: number; stored: number; highScoring?: number }>;
+    sweep?: Record<string, { triggered: boolean; fetched: number; stored: number }>;
   } | null>(null);
 
   useEffect(() => {
@@ -249,6 +250,7 @@ export default function AdminPage() {
                     timestamp: data.timestamp,
                     status: "complete",
                     articles: data.articles,
+                    sweep: data.sweep,
                   });
                   const secret = getCookie("auth_secret");
                   if (secret) loadStats(secret);
@@ -313,6 +315,18 @@ export default function AdminPage() {
                     </span>
                   )
                 )}
+              </div>
+            )}
+            {lastRefresh.sweep && Object.values(lastRefresh.sweep).some((s) => s.triggered) && (
+              <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1">
+                <span className="text-xs text-gray-500 font-medium">Sweep:</span>
+                {Object.entries(lastRefresh.sweep)
+                  .filter(([, s]) => s.triggered)
+                  .map(([section, s]) => (
+                    <span key={section} className="text-xs text-gray-400">
+                      {section}: {s.fetched} fetched, {s.stored} stored
+                    </span>
+                  ))}
               </div>
             )}
           </div>
