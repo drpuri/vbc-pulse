@@ -1,6 +1,7 @@
 // Cron endpoint — regenerates addenda from latest ratings, then fetches,
 // summarizes, and stores articles for all sections.
 // Triggered by Vercel Cron weekly (see vercel.json).
+// Saves progress to KV incrementally so partial results survive timeouts.
 
 import { NextResponse } from "next/server";
 import { SECTIONS } from "@/lib/sources";
@@ -19,6 +20,19 @@ import {
 export const maxDuration = 300; // 5 min for Vercel Pro
 export const dynamic = "force-dynamic";
 
+/** Save current progress to KV so the admin page can always show latest state. */
+async function saveProgress(
+  tuneResults: Record<string, { ratingsUsed: number; tuned: boolean }>,
+  fetchResults: Record<string, { fetched: number; stored: number }>,
+  status: "in_progress" | "complete"
+) {
+  const timestamp = new Date().toISOString();
+  await kv.set(
+    "last_refresh",
+    JSON.stringify({ timestamp, status, tuning: tuneResults, articles: fetchResults })
+  );
+}
+
 export async function GET(request: Request) {
   // Verify cron secret if set (Vercel sends this header)
   const authHeader = request.headers.get("authorization");
@@ -30,6 +44,9 @@ export async function GET(request: Request) {
   const tuneResults: Record<string, { ratingsUsed: number; tuned: boolean }> =
     {};
   const fetchResults: Record<string, { fetched: number; stored: number }> = {};
+
+  // Save initial progress marker
+  await saveProgress(tuneResults, fetchResults, "in_progress");
 
   // ── Phase 1: Auto-tune addenda from latest ratings ──────────
   for (const section of SECTIONS) {
@@ -59,6 +76,9 @@ export async function GET(request: Request) {
     }
   }
 
+  // Save after tuning completes
+  await saveProgress(tuneResults, fetchResults, "in_progress");
+
   // ── Phase 2: Fetch, summarize, store ────────────────────────
   for (const section of SECTIONS) {
     const sectionId = section.id as Section;
@@ -68,6 +88,8 @@ export async function GET(request: Request) {
 
       if (rawArticles.length === 0) {
         fetchResults[section.id] = { fetched: 0, stored: 0 };
+        // Save progress after each section
+        await saveProgress(tuneResults, fetchResults, "in_progress");
         continue;
       }
 
@@ -96,14 +118,17 @@ export async function GET(request: Request) {
       console.error(`[cron] Fetch error for ${section.id}:`, err);
       fetchResults[section.id] = { fetched: 0, stored: 0 };
     }
+
+    // Save progress after each section completes
+    await saveProgress(tuneResults, fetchResults, "in_progress");
   }
 
-  const timestamp = new Date().toISOString();
-  await kv.set("last_refresh", JSON.stringify({ timestamp, tuning: tuneResults, articles: fetchResults }));
+  // Final save as complete
+  await saveProgress(tuneResults, fetchResults, "complete");
 
   return NextResponse.json({
     ok: true,
-    timestamp,
+    timestamp: new Date().toISOString(),
     tuning: tuneResults,
     articles: fetchResults,
   });

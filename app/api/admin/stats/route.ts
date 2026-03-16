@@ -41,12 +41,18 @@ export async function GET(request: Request) {
     })
   );
 
-  const lastRefreshRaw = await kv.get("last_refresh");
-  const lastRefresh = lastRefreshRaw
-    ? typeof lastRefreshRaw === "string"
-      ? JSON.parse(lastRefreshRaw)
-      : lastRefreshRaw
-    : null;
+  let lastRefresh = null;
+  try {
+    const lastRefreshRaw = await kv.get("last_refresh");
+    if (lastRefreshRaw) {
+      lastRefresh =
+        typeof lastRefreshRaw === "string"
+          ? JSON.parse(lastRefreshRaw)
+          : lastRefreshRaw;
+    }
+  } catch {
+    // If KV read fails, lastRefresh stays null
+  }
 
   return NextResponse.json({ sections, lastRefresh });
 }

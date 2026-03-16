@@ -30,6 +30,7 @@ export default function AdminPage() {
   const [refreshing, setRefreshing] = useState(false);
   const [lastRefresh, setLastRefresh] = useState<{
     timestamp: string;
+    status?: string;
     articles?: Record<string, { fetched: number; stored: number }>;
   } | null>(null);
 
@@ -242,17 +243,26 @@ export default function AdminPage() {
               setRefreshing(true);
               try {
                 const res = await fetch("/api/cron/refresh");
-                const data = await res.json();
-                if (data.ok) {
+                if (res.ok) {
+                  const data = await res.json();
                   setLastRefresh({
                     timestamp: data.timestamp,
+                    status: "complete",
                     articles: data.articles,
                   });
                   const secret = getCookie("auth_secret");
                   if (secret) loadStats(secret);
+                } else {
+                  // Request may have timed out — reload stats from KV
+                  // which has incremental progress saved
+                  const secret = getCookie("auth_secret");
+                  if (secret) loadStats(secret);
                 }
               } catch {
-                // silent fail
+                // Timeout or network error — reload stats which reads
+                // incremental progress from KV
+                const secret = getCookie("auth_secret");
+                if (secret) loadStats(secret);
               } finally {
                 setRefreshing(false);
               }
@@ -287,6 +297,11 @@ export default function AdminPage() {
               <span className="font-medium text-gray-700">
                 {new Date(lastRefresh.timestamp).toLocaleString()}
               </span>
+              {lastRefresh.status && lastRefresh.status !== "complete" && (
+                <span className="ml-2 text-xs text-amber-600 font-medium">
+                  ({lastRefresh.status})
+                </span>
+              )}
             </p>
             {lastRefresh.articles && (
               <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1">
