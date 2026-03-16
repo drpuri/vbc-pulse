@@ -14,10 +14,8 @@ const rssParser = new Parser({
   },
 });
 
-// Track News API usage across the entire refresh cycle to stay within free tier (100/day).
-// Reset at the start of each fetchSection call chain won't help since sections run
-// sequentially in the cron — so we use a module-level counter that persists within
-// a single serverless invocation.
+// Track News API usage across the refresh cycle.
+// Free tier: 100 requests/day. Counter persists within a single serverless invocation.
 let newsApiCallCount = 0;
 const NEWS_API_MAX_CALLS = 80; // leave headroom
 
@@ -137,7 +135,9 @@ async function fetchNewsAPI(
 
   // Respect News API free tier limit
   if (newsApiCallCount >= NEWS_API_MAX_CALLS) {
-    console.log(`[fetcher] News API budget exhausted (${newsApiCallCount}/${NEWS_API_MAX_CALLS}), skipping "${source.query}"`);
+    console.log(
+      `[fetcher] News API budget exhausted (${newsApiCallCount}/${NEWS_API_MAX_CALLS}), skipping "${source.query}"`
+    );
     return [];
   }
   newsApiCallCount++;

@@ -528,7 +528,7 @@ const industrySection: SectionConfig = {
     { type: "rss", url: "https://kffhealthnews.org/feed/", label: "KFF Health News" },
     { type: "rss", url: "https://www.healthleadersmedia.com/rss", label: "HealthLeaders" },
 
-    // Limit search queries to conserve News API budget (other sections use most of the 100/day)
+    // Limit search queries to conserve News API budget (100 requests/day free tier)
     { type: "search_query", query: "healthcare conference HIMSS HLTH JPM 2026 announcements", label: "Conference news" },
     { type: "search_query", query: "healthcare CEO appointment leadership change 2026", label: "C-suite moves" },
     { type: "search_query", query: "healthcare private equity consolidation PBM reform", label: "PE & PBM" },
