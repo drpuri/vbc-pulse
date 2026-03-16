@@ -3,6 +3,7 @@
 import { NextResponse } from "next/server";
 import { SECTIONS } from "@/lib/sources";
 import type { Section } from "@/lib/sources";
+import { kv } from "@vercel/kv";
 import { getRatingStats, getAddendum, getArticles } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
@@ -40,5 +41,12 @@ export async function GET(request: Request) {
     })
   );
 
-  return NextResponse.json({ sections });
+  const lastRefreshRaw = await kv.get("last_refresh");
+  const lastRefresh = lastRefreshRaw
+    ? typeof lastRefreshRaw === "string"
+      ? JSON.parse(lastRefreshRaw)
+      : lastRefreshRaw
+    : null;
+
+  return NextResponse.json({ sections, lastRefresh });
 }

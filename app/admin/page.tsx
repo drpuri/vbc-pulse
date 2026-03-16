@@ -27,6 +27,11 @@ export default function AdminPage() {
   const [authed, setAuthed] = useState(false);
   const [secretInput, setSecretInput] = useState("");
   const [tuning, setTuning] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const [lastRefresh, setLastRefresh] = useState<{
+    timestamp: string;
+    articles?: Record<string, { fetched: number; stored: number }>;
+  } | null>(null);
 
   useEffect(() => {
     const cookie = getCookie("auth_secret");
@@ -59,6 +64,9 @@ export default function AdminPage() {
             articlesAnalyzed: (s.articlesAnalyzed as number) || 0,
           }))
         );
+      }
+      if (data.lastRefresh) {
+        setLastRefresh(data.lastRefresh);
       }
     } catch {
       // silent fail
@@ -231,13 +239,28 @@ export default function AdminPage() {
         <div className="flex flex-wrap gap-3">
           <button
             onClick={async () => {
-              const res = await fetch("/api/cron/refresh");
-              const data = await res.json();
-              alert(JSON.stringify(data, null, 2));
+              setRefreshing(true);
+              try {
+                const res = await fetch("/api/cron/refresh");
+                const data = await res.json();
+                if (data.ok) {
+                  setLastRefresh({
+                    timestamp: data.timestamp,
+                    articles: data.articles,
+                  });
+                  const secret = getCookie("auth_secret");
+                  if (secret) loadStats(secret);
+                }
+              } catch {
+                // silent fail
+              } finally {
+                setRefreshing(false);
+              }
             }}
-            className="btn-primary"
+            disabled={refreshing}
+            className={`btn-primary ${refreshing ? "opacity-50 cursor-not-allowed" : ""}`}
           >
-            Trigger Refresh
+            {refreshing ? "Refreshing..." : "Trigger Refresh"}
           </button>
           <button
             onClick={() => {
@@ -250,6 +273,35 @@ export default function AdminPage() {
             Sign out
           </button>
         </div>
+
+        {refreshing && (
+          <p className="text-sm text-gray-400 mt-3 animate-pulse">
+            Tuning addenda and fetching articles across all sections. This may take a few minutes...
+          </p>
+        )}
+
+        {lastRefresh && (
+          <div className="mt-4 pt-4 border-t border-gray-100">
+            <p className="text-sm text-gray-500">
+              Last refresh:{" "}
+              <span className="font-medium text-gray-700">
+                {new Date(lastRefresh.timestamp).toLocaleString()}
+              </span>
+            </p>
+            {lastRefresh.articles && (
+              <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1">
+                {Object.entries(lastRefresh.articles).map(
+                  ([section, counts]) => (
+                    <span key={section} className="text-xs text-gray-400">
+                      {section}: {counts.fetched} fetched, {counts.stored}{" "}
+                      stored
+                    </span>
+                  )
+                )}
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

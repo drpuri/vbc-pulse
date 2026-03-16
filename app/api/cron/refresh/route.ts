@@ -8,6 +8,7 @@ import type { Section } from "@/lib/sources";
 import { fetchSection } from "@/lib/fetcher";
 import { summarizeBatch } from "@/lib/summarizer";
 import { generateFeedbackAddendum } from "@/lib/feedback";
+import { kv } from "@vercel/kv";
 import {
   storeArticleBatch,
   getAddendum,
@@ -97,9 +98,12 @@ export async function GET(request: Request) {
     }
   }
 
+  const timestamp = new Date().toISOString();
+  await kv.set("last_refresh", JSON.stringify({ timestamp, tuning: tuneResults, articles: fetchResults }));
+
   return NextResponse.json({
     ok: true,
-    timestamp: new Date().toISOString(),
+    timestamp,
     tuning: tuneResults,
     articles: fetchResults,
   });
