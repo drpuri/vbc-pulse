@@ -41,25 +41,25 @@ export default function AdminPage() {
   async function loadStats(secret: string) {
     setLoading(true);
     try {
-      const results = await Promise.all(
-        SECTIONS.map(async (s) => {
-          const [feedRes] = await Promise.all([
-            fetch(`/api/feed/${s.id}?limit=1`),
-          ]);
-          const feedData = await feedRes.json();
-          return {
-            id: s.id,
-            name: s.name,
-            total: feedData.count || 0,
-            avgUser: 0,
-            avgModel: 0,
-            addendum: null as string | null,
-            addendumDate: null as string | null,
-            articlesAnalyzed: 0,
-          };
-        })
-      );
-      setStats(results);
+      const res = await fetch("/api/admin/stats", {
+        headers: { "x-auth-secret": secret },
+      });
+      const data = await res.json();
+
+      if (data.sections) {
+        setStats(
+          data.sections.map((s: Record<string, unknown>) => ({
+            id: s.id as string,
+            name: s.name as string,
+            total: (s.articleCount as number) || 0,
+            avgUser: (s.avgUser as number) || 0,
+            avgModel: (s.avgModel as number) || 0,
+            addendum: (s.addendum as string) || null,
+            addendumDate: (s.addendumDate as string) || null,
+            articlesAnalyzed: (s.articlesAnalyzed as number) || 0,
+          }))
+        );
+      }
     } catch {
       // silent fail
     } finally {
