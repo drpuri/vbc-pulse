@@ -525,6 +525,7 @@ const industrySection: SectionConfig = {
   description:
     "Conferences, product launches, trending takes, wild cards — interesting stuff that doesn't fit neatly elsewhere",
   searchDepth: 5,
+  sweepQuery: "most important healthcare industry news trends debates this week",
   sources: [
     // RSS — broad healthcare + health policy (primary content source)
     { type: "rss", url: "https://www.fiercehealthcare.com/rss/xml", label: "Fierce Healthcare" },
@@ -545,6 +546,12 @@ const industrySection: SectionConfig = {
     { type: "search_query", query: "healthcare CEO appointment leadership change 2026", label: "C-suite moves" },
     { type: "search_query", query: "healthcare private equity consolidation PBM reform", label: "PE & PBM" },
     { type: "search_query", query: "CMS innovation center new model healthcare policy surprise", label: "Policy moves" },
+
+    // Social / trending conversation
+    { type: "search_query", query: "site:x.com healthcare value-based care debate trending", label: "X/Twitter healthcare" },
+    { type: "search_query", query: "site:linkedin.com healthcare executive opinion value-based care", label: "LinkedIn healthcare" },
+    { type: "search_query", query: "healthcare Twitter debate controversy viral take this week", label: "Healthcare hot takes" },
+    { type: "search_query", query: "Farzad Mostashari Andy Slavitt healthcare social media post", label: "Healthcare voices" },
   ],
   summarizerPrompt: `You are curating an "industry buzz" feed for a healthcare CMO who wants to stay plugged into the broader conversation beyond their core operational areas. This is the catch-all for interesting, surprising, or conversation-worthy content.
 
