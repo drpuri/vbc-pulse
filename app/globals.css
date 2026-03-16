@@ -1,0 +1,43 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-terminal-bg text-terminal-text antialiased;
+  }
+
+  ::selection {
+    @apply bg-terminal-accent/30 text-white;
+  }
+
+  ::-webkit-scrollbar {
+    @apply w-1.5;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-terminal-bg;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-terminal-border rounded-full hover:bg-terminal-muted;
+  }
+}
+
+@layer components {
+  .card {
+    @apply bg-terminal-surface border border-terminal-border rounded-lg p-5 transition-colors hover:border-terminal-accent/40;
+  }
+
+  .tag {
+    @apply inline-block text-xs font-mono px-2 py-0.5 rounded bg-terminal-accent/10 text-terminal-accent border border-terminal-accent/20;
+  }
+
+  .btn-primary {
+    @apply px-4 py-2 bg-terminal-accent text-terminal-bg font-mono text-sm font-semibold rounded hover:bg-terminal-accent/90 transition-colors;
+  }
+
+  .btn-ghost {
+    @apply px-4 py-2 border border-terminal-border text-terminal-muted font-mono text-sm rounded hover:border-terminal-accent hover:text-terminal-accent transition-colors;
+  }
+}
