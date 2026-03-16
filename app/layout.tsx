@@ -8,6 +8,14 @@ export const metadata: Metadata = {
     "AI-curated value-based care intelligence for healthcare executives",
 };
 
+const NAV_LINKS = [
+  { href: "/aco", label: "ACO" },
+  { href: "/risk-adjustment", label: "Risk Adj" },
+  { href: "/quality-cost", label: "Quality" },
+  { href: "/ai-vbc", label: "AI + VBC" },
+  { href: "/earnings", label: "Earnings" },
+];
+
 export default function RootLayout({
   children,
 }: {
@@ -16,60 +24,41 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="min-h-screen flex flex-col">
-        <header className="border-b border-terminal-border">
-          <nav className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
-            <Link href="/" className="flex items-center gap-3 group">
-              <div className="w-2 h-2 rounded-full bg-terminal-accent animate-pulse" />
-              <span className="font-mono text-lg font-bold tracking-tight text-terminal-text group-hover:text-terminal-accent transition-colors">
-                VBC PULSE
-              </span>
+        <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
+          <nav className="max-w-5xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
+            <Link
+              href="/"
+              className="text-lg font-bold tracking-tight text-gray-900 hover:text-brand-600 transition-colors"
+            >
+              VBC Pulse
             </Link>
-            <div className="hidden sm:flex items-center gap-6 font-mono text-xs text-terminal-muted">
-              <Link
-                href="/aco"
-                className="hover:text-terminal-accent transition-colors"
-              >
-                ACO
-              </Link>
-              <Link
-                href="/risk-adjustment"
-                className="hover:text-terminal-accent transition-colors"
-              >
-                RISK ADJ
-              </Link>
-              <Link
-                href="/quality-cost"
-                className="hover:text-terminal-accent transition-colors"
-              >
-                QUALITY
-              </Link>
-              <Link
-                href="/ai-vbc"
-                className="hover:text-terminal-accent transition-colors"
-              >
-                AI+VBC
-              </Link>
-              <Link
-                href="/earnings"
-                className="hover:text-terminal-accent transition-colors"
-              >
-                EARNINGS
-              </Link>
-              <span className="w-px h-4 bg-terminal-border" />
+            <div className="hidden sm:flex items-center gap-1">
+              {NAV_LINKS.map((link) => (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className="px-3 py-1.5 text-sm text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors"
+                >
+                  {link.label}
+                </Link>
+              ))}
+              <span className="w-px h-5 bg-gray-200 mx-1" />
               <Link
                 href="/admin"
-                className="hover:text-terminal-warn transition-colors"
+                className="px-3 py-1.5 text-sm text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-md transition-colors"
               >
-                ADMIN
+                Admin
               </Link>
             </div>
           </nav>
         </header>
-        <main className="flex-1 max-w-6xl mx-auto px-4 py-8 w-full">
+
+        <main className="flex-1 max-w-5xl mx-auto px-4 sm:px-6 py-8 w-full">
           {children}
         </main>
-        <footer className="border-t border-terminal-border py-6">
-          <div className="max-w-6xl mx-auto px-4 flex items-center justify-between text-xs font-mono text-terminal-muted">
+
+        <footer className="border-t border-gray-200 bg-white py-6">
+          <div className="max-w-5xl mx-auto px-4 sm:px-6 flex items-center justify-between text-xs text-gray-400">
             <span>VBC Pulse &middot; AI-curated healthcare intelligence</span>
             <span className="hidden sm:inline">
               Powered by Claude &middot; Updated weekly

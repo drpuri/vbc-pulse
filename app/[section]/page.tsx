@@ -12,6 +12,11 @@ interface FeedResponse {
   articles: SummarizedArticle[];
 }
 
+function RelevanceBadge({ score }: { score: number }) {
+  const cls = score >= 5 ? "badge-5" : score >= 4 ? "badge-4" : "badge-3";
+  return <span className={cls}>{score}/5</span>;
+}
+
 function RatingWidget({
   articleId,
   section,
@@ -56,19 +61,17 @@ function RatingWidget({
           onMouseEnter={() => setHovering(v)}
           onMouseLeave={() => setHovering(null)}
           disabled={saving}
-          className={`w-6 h-6 text-xs font-mono rounded transition-colors ${
+          className={`w-7 h-7 text-xs rounded-md transition-colors ${
             (hovering ?? rating ?? 0) >= v
-              ? "bg-terminal-accent text-terminal-bg"
-              : "bg-terminal-border text-terminal-muted hover:bg-terminal-accent/30"
+              ? "bg-brand-600 text-white"
+              : "bg-gray-100 text-gray-400 hover:bg-gray-200"
           }`}
         >
           {v}
         </button>
       ))}
       {rating && (
-        <span className="text-xs font-mono text-terminal-muted ml-1">
-          Rated
-        </span>
+        <span className="text-xs text-gray-400 ml-1">Rated</span>
       )}
     </div>
   );
@@ -78,6 +81,29 @@ function getCookie(name: string): string | null {
   if (typeof document === "undefined") return null;
   const match = document.cookie.match(new RegExp(`(^| )${name}=([^;]+)`));
   return match ? match[2] : null;
+}
+
+function FilterButton({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+        active
+          ? "bg-gray-900 text-white"
+          : "bg-white border border-gray-200 text-gray-500 hover:border-gray-300 hover:text-gray-700"
+      }`}
+    >
+      {children}
+    </button>
+  );
 }
 
 export default function SectionPage() {
@@ -135,10 +161,10 @@ export default function SectionPage() {
   if (!sectionConfig) {
     return (
       <div className="text-center py-20">
-        <h1 className="font-mono text-xl text-terminal-danger mb-2">
+        <h1 className="text-xl font-semibold text-gray-900 mb-2">
           Section not found
         </h1>
-        <Link href="/" className="text-terminal-accent font-mono text-sm">
+        <Link href="/" className="text-brand-600 text-sm hover:underline">
           &larr; Back to dashboard
         </Link>
       </div>
@@ -150,123 +176,91 @@ export default function SectionPage() {
       <div className="mb-8">
         <Link
           href="/"
-          className="text-xs font-mono text-terminal-muted hover:text-terminal-accent transition-colors"
+          className="text-sm text-gray-400 hover:text-gray-600 transition-colors"
         >
           &larr; Dashboard
         </Link>
-        <h1 className="font-mono text-2xl font-bold mt-2">
-          <span className="text-terminal-accent">&gt;</span>{" "}
+        <h1 className="text-2xl font-bold text-gray-900 mt-2">
           {sectionConfig.name}
         </h1>
-        <p className="text-terminal-muted text-sm mt-1">
-          {sectionConfig.description}
-        </p>
+        <p className="text-gray-500 mt-1">{sectionConfig.description}</p>
       </div>
 
       {/* Filters */}
-      <div className="flex flex-wrap items-center gap-4 mb-6 pb-4 border-b border-terminal-border">
-        <div className="flex items-center gap-2">
-          <label className="text-xs font-mono text-terminal-muted">
-            Min relevance:
-          </label>
-          {[0, 3, 4, 5].map((v) => (
-            <button
-              key={v}
-              onClick={() => setMinRelevance(v)}
-              className={`px-2 py-1 text-xs font-mono rounded transition-colors ${
-                minRelevance === v
-                  ? "bg-terminal-accent text-terminal-bg"
-                  : "bg-terminal-surface border border-terminal-border text-terminal-muted hover:border-terminal-accent"
-              }`}
-            >
-              {v === 0 ? "All" : `${v}+`}
-            </button>
-          ))}
-        </div>
-        <div className="flex items-center gap-2">
-          <label className="text-xs font-mono text-terminal-muted">
-            Sort:
-          </label>
-          <button
-            onClick={() => setSortBy("date")}
-            className={`px-2 py-1 text-xs font-mono rounded transition-colors ${
-              sortBy === "date"
-                ? "bg-terminal-accent text-terminal-bg"
-                : "bg-terminal-surface border border-terminal-border text-terminal-muted hover:border-terminal-accent"
-            }`}
+      <div className="flex flex-wrap items-center gap-3 mb-6 pb-5 border-b border-gray-200">
+        <span className="text-xs text-gray-400 mr-1">Relevance:</span>
+        {[0, 3, 4, 5].map((v) => (
+          <FilterButton
+            key={v}
+            active={minRelevance === v}
+            onClick={() => setMinRelevance(v)}
           >
-            Date
-          </button>
-          <button
-            onClick={() => setSortBy("relevance")}
-            className={`px-2 py-1 text-xs font-mono rounded transition-colors ${
-              sortBy === "relevance"
-                ? "bg-terminal-accent text-terminal-bg"
-                : "bg-terminal-surface border border-terminal-border text-terminal-muted hover:border-terminal-accent"
-            }`}
-          >
-            Relevance
-          </button>
-        </div>
+            {v === 0 ? "All" : `${v}+`}
+          </FilterButton>
+        ))}
+        <span className="w-px h-5 bg-gray-200 mx-1" />
+        <span className="text-xs text-gray-400 mr-1">Sort:</span>
+        <FilterButton
+          active={sortBy === "date"}
+          onClick={() => setSortBy("date")}
+        >
+          Latest
+        </FilterButton>
+        <FilterButton
+          active={sortBy === "relevance"}
+          onClick={() => setSortBy("relevance")}
+        >
+          Relevance
+        </FilterButton>
       </div>
 
       {/* Articles */}
       <div className="space-y-4">
         {sortedArticles.map((article) => (
           <article key={article.id} className="card">
-            <div className="flex items-start justify-between gap-4">
+            <div className="flex items-start gap-4">
               <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2 mb-1">
+                  <RelevanceBadge score={article.relevance} />
+                  <span className="text-xs text-gray-400">
+                    {article.source} &middot;{" "}
+                    {new Date(article.fetchedAt).toLocaleDateString()}
+                  </span>
+                </div>
                 <a
                   href={article.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="font-mono text-sm font-semibold text-terminal-text hover:text-terminal-accent transition-colors line-clamp-2"
+                  className="text-base font-semibold text-gray-900 hover:text-brand-600 transition-colors leading-snug"
                 >
                   {article.title}
                 </a>
-                <p className="text-sm text-terminal-muted mt-2 leading-relaxed">
+                <p className="text-sm text-gray-500 mt-2 leading-relaxed">
                   {article.summary}
                 </p>
-              </div>
-              <div className="shrink-0 flex flex-col items-end gap-1">
-                <span
-                  className={`font-mono text-xs px-2 py-0.5 rounded ${
-                    article.relevance >= 4
-                      ? "bg-terminal-accent/20 text-terminal-accent"
-                      : article.relevance >= 3
-                        ? "bg-terminal-warn/20 text-terminal-warn"
-                        : "bg-terminal-border text-terminal-muted"
-                  }`}
-                >
-                  {article.relevance}/5
-                </span>
+
+                {/* Tags */}
+                {article.tags.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 mt-3">
+                    {article.tags.map((tag) => (
+                      <span key={tag} className="tag">
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                {/* Deadlines */}
+                {article.deadlines.length > 0 && (
+                  <div className="mt-2 text-xs font-medium text-amber-600">
+                    Deadlines: {article.deadlines.join(" | ")}
+                  </div>
+                )}
               </div>
             </div>
 
-            {/* Tags */}
-            {article.tags.length > 0 && (
-              <div className="flex flex-wrap gap-1.5 mt-3">
-                {article.tags.map((tag) => (
-                  <span key={tag} className="tag">
-                    {tag}
-                  </span>
-                ))}
-              </div>
-            )}
-
-            {/* Deadlines */}
-            {article.deadlines.length > 0 && (
-              <div className="mt-2 text-xs font-mono text-terminal-warn">
-                Deadlines: {article.deadlines.join(" | ")}
-              </div>
-            )}
-
-            {/* Attribution + Rating */}
-            <div className="flex items-center justify-between mt-3 pt-3 border-t border-terminal-border">
-              <span className="text-xs font-mono text-terminal-muted">
-                via {article.source} &middot;{" "}
-                {new Date(article.fetchedAt).toLocaleDateString()}
-              </span>
+            {/* Rating */}
+            <div className="flex items-center justify-end mt-4 pt-3 border-t border-gray-100">
               <RatingWidget
                 articleId={article.id}
                 section={sectionId}
@@ -280,7 +274,7 @@ export default function SectionPage() {
       {/* Loading / Load More */}
       {loading && (
         <div className="text-center py-8">
-          <span className="font-mono text-sm text-terminal-muted animate-pulse">
+          <span className="text-sm text-gray-400 animate-pulse">
             Loading...
           </span>
         </div>
@@ -288,7 +282,7 @@ export default function SectionPage() {
 
       {!loading && sortedArticles.length === 0 && (
         <div className="text-center py-20">
-          <p className="font-mono text-terminal-muted">
+          <p className="text-gray-400">
             No articles yet. Waiting for first fetch cycle.
           </p>
         </div>

@@ -7,19 +7,13 @@ const config: Config = {
   ],
   theme: {
     extend: {
-      fontFamily: {
-        mono: ["'SF Mono'", "'Fira Code'", "'Cascadia Code'", "monospace"],
-      },
       colors: {
-        terminal: {
-          bg: "#0a0a0f",
-          surface: "#12121a",
-          border: "#1e1e2e",
-          text: "#e0e0e8",
-          muted: "#6b6b80",
-          accent: "#00d4aa",
-          warn: "#f5a623",
-          danger: "#ff4757",
+        brand: {
+          50: "#eff6ff",
+          100: "#dbeafe",
+          500: "#3b82f6",
+          600: "#2563eb",
+          700: "#1d4ed8",
         },
       },
     },

@@ -41,7 +41,6 @@ export default function AdminPage() {
   async function loadStats(secret: string) {
     setLoading(true);
     try {
-      // Fetch stats for each section from the feed endpoint
       const results = await Promise.all(
         SECTIONS.map(async (s) => {
           const [feedRes] = await Promise.all([
@@ -114,24 +113,22 @@ export default function AdminPage() {
 
   if (!authed) {
     return (
-      <div className="max-w-md mx-auto py-20">
-        <h1 className="font-mono text-xl font-bold mb-6">
-          <span className="text-terminal-accent">&gt;</span> Admin Access
-        </h1>
+      <div className="max-w-sm mx-auto py-20">
+        <h1 className="text-xl font-bold text-gray-900 mb-6">Admin Access</h1>
         <div className="card">
-          <label className="block text-xs font-mono text-terminal-muted mb-2">
-            AUTH_SECRET
+          <label className="block text-sm text-gray-500 mb-2">
+            Password
           </label>
           <input
             type="password"
             value={secretInput}
             onChange={(e) => setSecretInput(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleLogin()}
-            className="w-full bg-terminal-bg border border-terminal-border rounded px-3 py-2 font-mono text-sm text-terminal-text focus:border-terminal-accent focus:outline-none"
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 focus:border-brand-500 focus:ring-1 focus:ring-brand-500 focus:outline-none"
             placeholder="Enter secret..."
           />
           <button onClick={handleLogin} className="btn-primary mt-3 w-full">
-            Authenticate
+            Sign in
           </button>
         </div>
       </div>
@@ -143,33 +140,31 @@ export default function AdminPage() {
       <div className="mb-8">
         <Link
           href="/"
-          className="text-xs font-mono text-terminal-muted hover:text-terminal-accent transition-colors"
+          className="text-sm text-gray-400 hover:text-gray-600 transition-colors"
         >
           &larr; Dashboard
         </Link>
-        <h1 className="font-mono text-2xl font-bold mt-2">
-          <span className="text-terminal-warn">&gt;</span> Admin Panel
-        </h1>
-        <p className="text-terminal-muted text-sm mt-1">
+        <h1 className="text-2xl font-bold text-gray-900 mt-2">Admin</h1>
+        <p className="text-gray-500 mt-1">
           Rating stats, feedback tuning, and system monitoring
         </p>
       </div>
 
       {loading ? (
         <div className="text-center py-12">
-          <span className="font-mono text-sm text-terminal-muted animate-pulse">
+          <span className="text-sm text-gray-400 animate-pulse">
             Loading stats...
           </span>
         </div>
       ) : (
-        <div className="space-y-6">
+        <div className="space-y-5">
           {stats.map((s) => (
             <div key={s.id} className="card">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="font-mono text-base font-bold">{s.name}</h2>
+                <h2 className="font-semibold text-gray-900">{s.name}</h2>
                 <Link
                   href={`/${s.id}`}
-                  className="text-xs font-mono text-terminal-accent hover:underline"
+                  className="text-sm text-brand-600 hover:underline"
                 >
                   View feed &rarr;
                 </Link>
@@ -177,50 +172,43 @@ export default function AdminPage() {
 
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
                 <div>
-                  <div className="text-xs font-mono text-terminal-muted">
-                    Articles
-                  </div>
-                  <div className="text-lg font-mono font-bold text-terminal-text">
+                  <div className="text-xs text-gray-400">Articles</div>
+                  <div className="text-xl font-bold text-gray-900">
                     {s.total}
                   </div>
                 </div>
                 <div>
-                  <div className="text-xs font-mono text-terminal-muted">
+                  <div className="text-xs text-gray-400">
                     Avg User Rating
                   </div>
-                  <div className="text-lg font-mono font-bold text-terminal-text">
+                  <div className="text-xl font-bold text-gray-900">
                     {s.avgUser || "—"}
                   </div>
                 </div>
                 <div>
-                  <div className="text-xs font-mono text-terminal-muted">
+                  <div className="text-xs text-gray-400">
                     Avg Model Score
                   </div>
-                  <div className="text-lg font-mono font-bold text-terminal-text">
+                  <div className="text-xl font-bold text-gray-900">
                     {s.avgModel || "—"}
                   </div>
                 </div>
                 <div>
-                  <div className="text-xs font-mono text-terminal-muted">
-                    Rated Articles
-                  </div>
-                  <div className="text-lg font-mono font-bold text-terminal-text">
+                  <div className="text-xs text-gray-400">Rated</div>
+                  <div className="text-xl font-bold text-gray-900">
                     {s.articlesAnalyzed || "—"}
                   </div>
                 </div>
               </div>
 
-              {/* Addendum display */}
               {s.addendum && (
-                <div className="bg-terminal-bg rounded p-3 mb-4 border border-terminal-border">
-                  <div className="text-xs font-mono text-terminal-accent mb-1">
-                    Current Addendum (
-                    {s.addendumDate
-                      ? new Date(s.addendumDate).toLocaleDateString()
-                      : "unknown"}
-                    )
+                <div className="bg-gray-50 rounded-lg p-4 mb-4 border border-gray-100">
+                  <div className="text-xs font-medium text-gray-500 mb-2">
+                    Current Addendum{" "}
+                    {s.addendumDate &&
+                      `(${new Date(s.addendumDate).toLocaleDateString()})`}
                   </div>
-                  <pre className="text-xs text-terminal-muted whitespace-pre-wrap font-mono">
+                  <pre className="text-sm text-gray-600 whitespace-pre-wrap">
                     {s.addendum}
                   </pre>
                 </div>
@@ -238,9 +226,8 @@ export default function AdminPage() {
         </div>
       )}
 
-      {/* Quick Actions */}
       <div className="mt-8 card">
-        <h2 className="font-mono text-base font-bold mb-4">Quick Actions</h2>
+        <h2 className="font-semibold text-gray-900 mb-4">Quick Actions</h2>
         <div className="flex flex-wrap gap-3">
           <button
             onClick={async () => {
@@ -260,7 +247,7 @@ export default function AdminPage() {
             }}
             className="btn-ghost"
           >
-            Logout
+            Sign out
           </button>
         </div>
       </div>

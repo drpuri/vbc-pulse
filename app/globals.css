@@ -4,40 +4,39 @@
 
 @layer base {
   body {
-    @apply bg-terminal-bg text-terminal-text antialiased;
+    @apply bg-gray-50 text-gray-900 antialiased;
+    font-feature-settings: "kern" 1, "liga" 1;
   }
 
   ::selection {
-    @apply bg-terminal-accent/30 text-white;
-  }
-
-  ::-webkit-scrollbar {
-    @apply w-1.5;
-  }
-
-  ::-webkit-scrollbar-track {
-    @apply bg-terminal-bg;
-  }
-
-  ::-webkit-scrollbar-thumb {
-    @apply bg-terminal-border rounded-full hover:bg-terminal-muted;
+    @apply bg-blue-100 text-blue-900;
   }
 }
 
 @layer components {
   .card {
-    @apply bg-terminal-surface border border-terminal-border rounded-lg p-5 transition-colors hover:border-terminal-accent/40;
+    @apply bg-white border border-gray-200 rounded-xl p-6 shadow-sm transition-shadow hover:shadow-md;
   }
 
   .tag {
-    @apply inline-block text-xs font-mono px-2 py-0.5 rounded bg-terminal-accent/10 text-terminal-accent border border-terminal-accent/20;
+    @apply inline-block text-xs px-2.5 py-0.5 rounded-full bg-gray-100 text-gray-600;
   }
 
   .btn-primary {
-    @apply px-4 py-2 bg-terminal-accent text-terminal-bg font-mono text-sm font-semibold rounded hover:bg-terminal-accent/90 transition-colors;
+    @apply px-4 py-2 bg-gray-900 text-white text-sm font-medium rounded-lg hover:bg-gray-800 transition-colors;
   }
 
   .btn-ghost {
-    @apply px-4 py-2 border border-terminal-border text-terminal-muted font-mono text-sm rounded hover:border-terminal-accent hover:text-terminal-accent transition-colors;
+    @apply px-4 py-2 border border-gray-300 text-gray-600 text-sm font-medium rounded-lg hover:border-gray-400 hover:text-gray-900 transition-colors;
+  }
+
+  .badge-5 {
+    @apply text-xs font-medium px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700;
+  }
+  .badge-4 {
+    @apply text-xs font-medium px-2 py-0.5 rounded-full bg-blue-50 text-blue-700;
+  }
+  .badge-3 {
+    @apply text-xs font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-500;
   }
 }
