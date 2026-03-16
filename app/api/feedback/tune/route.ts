@@ -32,6 +32,7 @@ export async function POST(request: Request) {
       "quality-cost",
       "ai-vbc",
       "earnings",
+      "industry",
     ];
     if (!validSections.includes(section as Section)) {
       return NextResponse.json(

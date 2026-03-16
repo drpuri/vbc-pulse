@@ -238,6 +238,7 @@ export async function getSectionCounts(): Promise<
     "quality-cost",
     "ai-vbc",
     "earnings",
+    "industry",
   ];
   const counts = {} as Record<Section, number>;
 

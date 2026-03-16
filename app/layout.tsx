@@ -14,6 +14,7 @@ const NAV_LINKS = [
   { href: "/quality-cost", label: "Quality" },
   { href: "/ai-vbc", label: "AI + VBC" },
   { href: "/earnings", label: "Earnings" },
+  { href: "/industry", label: "Buzz" },
 ];
 
 export default function RootLayout({

@@ -7,7 +7,8 @@ export type Section =
   | "risk-adjustment"
   | "quality-cost"
   | "ai-vbc"
-  | "earnings";
+  | "earnings"
+  | "industry";
 
 export interface Source {
   type: "rss" | "search_query" | "direct_url";
@@ -504,6 +505,81 @@ For each article, respond in JSON:
 { "summary": "depth per tier above", "relevance": 1-5, "deadlines": ["earnings dates if mentioned"], "tags": ["company ticker", "topic tags"] }`,
 };
 
+// ─── Section 6: Industry News & Buzz ─────────────────────────
+
+const industrySection: SectionConfig = {
+  id: "industry",
+  name: "Industry Buzz",
+  description:
+    "Conferences, product launches, trending takes, wild cards — interesting stuff that doesn't fit neatly elsewhere",
+  sources: [
+    // RSS — broad healthcare + health policy
+    { type: "rss", url: "https://www.fiercehealthcare.com/rss/xml", label: "Fierce Healthcare" },
+    { type: "rss", url: "https://www.statnews.com/feed/", label: "STAT News" },
+    { type: "rss", url: "https://www.modernhealthcare.com/section/rss", label: "Modern Healthcare" },
+    { type: "rss", url: "https://www.beckershospitalreview.com/rss/healthcare-information-technology.html", label: "Becker's Health IT" },
+    { type: "rss", url: "https://hospitalogy.substack.com/feed", label: "Hospitalogy" },
+    { type: "rss", url: "https://outofpocket.health/feed", label: "Out-of-Pocket" },
+    { type: "rss", url: "https://thehealthcareblog.com/feed/", label: "The Health Care Blog" },
+
+    // Conferences + events
+    { type: "search_query", query: "HIMSS 2026 conference announcements healthcare", label: "HIMSS 2026" },
+    { type: "search_query", query: "HLTH conference 2026 healthcare innovation", label: "HLTH 2026" },
+    { type: "search_query", query: "JP Morgan healthcare conference 2026 announcements", label: "JPM Healthcare" },
+    { type: "search_query", query: "AHIP conference Medicare Advantage 2026", label: "AHIP 2026" },
+    { type: "search_query", query: "AMDA PALTC conference post-acute 2026", label: "AMDA 2026" },
+    { type: "search_query", query: "ViVE healthcare conference 2026", label: "ViVE 2026" },
+
+    // Product launches + company news
+    { type: "search_query", query: "healthcare startup launch product announcement 2026", label: "Startup launches" },
+    { type: "search_query", query: "health tech product launch new feature 2026", label: "Health tech products" },
+    { type: "search_query", query: "CMS innovation center new model demonstration", label: "CMMI new models" },
+
+    // Trending industry discourse
+    { type: "search_query", query: "healthcare industry controversy debate trending", label: "Industry debate" },
+    { type: "search_query", query: "Medicare Medicaid policy surprise unexpected", label: "Policy surprises" },
+    { type: "search_query", query: "healthcare executive leadership change CEO appointment", label: "C-suite moves" },
+    { type: "search_query", query: "healthcare workforce burnout shortage crisis 2026", label: "Workforce crisis" },
+    { type: "search_query", query: "pharmacy benefit manager PBM reform healthcare", label: "PBM reform" },
+    { type: "search_query", query: "healthcare private equity consolidation backlash", label: "PE backlash" },
+
+    // Social / trending takes
+    { type: "search_query", query: "healthcare twitter thread viral opinion value-based care", label: "Viral healthcare takes" },
+    { type: "search_query", query: "Farzad Mostashari Aledade healthcare opinion", label: "Mostashari takes" },
+    { type: "search_query", query: "healthcare newsletter must-read weekly", label: "Newsletter picks" },
+  ],
+  summarizerPrompt: `You are curating an "industry buzz" feed for a healthcare CMO who wants to stay plugged into the broader conversation beyond their core operational areas. This is the catch-all for interesting, surprising, or conversation-worthy content.
+
+HIGHEST PRIORITY — score 5:
+- Major conference announcements with real strategic implications (HIMSS, HLTH, JPM Healthcare, AHIP)
+- Surprising policy moves, regulatory shifts, or CMS announcements that cut across sectors
+- Viral industry discourse or hot takes from credible voices that are shaping real conversation
+- C-suite moves at major payers, providers, or VBC companies
+- New CMS innovation models or demonstration programs
+
+HIGH PRIORITY — score 4:
+- Notable product launches or partnerships from health tech companies
+- Healthcare PE/consolidation trends generating real backlash or debate
+- Workforce crisis developments with operational implications
+- Cross-cutting trends (PBM reform, price transparency, site-of-care shifts)
+
+LOWER PRIORITY — score 2-3:
+- Conference coverage that's mostly promotional without substance
+- Routine leadership changes at smaller organizations
+- General health policy news already well-covered in other sections
+
+FILTER OUT — score 1:
+- Pure marketing/PR fluff
+- Content that fits cleanly in the ACO, RA, Quality, AI, or Earnings sections
+- Non-healthcare content
+- Clickbait without substance
+
+The bar here is: "Would a busy CMO forward this to a colleague with 'you need to see this'?"
+
+For each article, respond in JSON:
+{ "summary": "2-3 sentences capturing why this is interesting and what it signals", "relevance": 1-5, "deadlines": ["any relevant dates"], "tags": ["topic tags"] }`,
+};
+
 // ─── Export all sections ────────────────────────────────────
 
 export const SECTIONS: SectionConfig[] = [
@@ -512,6 +588,7 @@ export const SECTIONS: SectionConfig[] = [
   qualityCostSection,
   aiVbcSection,
   earningsSection,
+  industrySection,
 ];
 
 // ─── Feedback system types ──────────────────────────────────

@@ -11,6 +11,7 @@ const VALID_SECTIONS: Section[] = [
   "quality-cost",
   "ai-vbc",
   "earnings",
+  "industry",
 ];
 
 export async function GET(
